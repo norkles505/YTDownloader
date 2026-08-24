@@ -7,6 +7,16 @@ import os
 import re
 import time
 
+# Al compilar con --windowed (sin consola), sys.stdout y sys.stderr quedan
+# en None. Cualquier libreria que intente hacer print()/.write() ahi
+# (como static_ffmpeg al mostrar progreso de descarga) revienta con
+# "AttributeError: 'NoneType' object has no attribute 'write'". Les damos
+# un destino valido y vacio para evitarlo.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
+
 def instalar_si_falta(paquete, nombre_pip=None):
     try:
         __import__(paquete)
@@ -35,18 +45,25 @@ def instalar_si_falta(paquete, nombre_pip=None):
                                    nombre_pip or paquete, "--quiet"])
 
 instalar_si_falta("yt_dlp")
-instalar_si_falta("imageio_ffmpeg", "imageio-ffmpeg")
+instalar_si_falta("static_ffmpeg", "static-ffmpeg")
 
 import yt_dlp
-import imageio_ffmpeg
+from static_ffmpeg import run as _ffmpeg_run
+
+ERROR_FFMPEG = None  # guarda el motivo real si falla la obtencion de ffmpeg
 
 def obtener_ffmpeg():
+    global ERROR_FFMPEG
+    # static_ffmpeg trae ffmpeg Y ffprobe juntos en la misma carpeta.
+    # yt-dlp necesita AMBOS binarios para poder recortar (download_ranges);
+    # con solo ffmpeg (como traia imageio_ffmpeg) el recorte falla con
+    # "ffmpeg is not installed" aunque ffmpeg si este presente.
     try:
-        ruta = imageio_ffmpeg.get_ffmpeg_exe()
-        if ruta and os.path.isfile(ruta):
-            return ruta
-    except Exception:
-        pass
+        ffmpeg_path, ffprobe_path = _ffmpeg_run.get_or_fetch_platform_executables_else_raise()
+        if ffmpeg_path and os.path.isfile(ffmpeg_path):
+            return ffmpeg_path
+    except Exception as e:
+        ERROR_FFMPEG = f"{type(e).__name__}: {e}"
     for nombre in ("ffmpeg", "ffmpeg.exe"):
         for carpeta in os.environ.get("PATH", "").split(os.pathsep):
             ruta = os.path.join(carpeta, nombre)
@@ -55,6 +72,15 @@ def obtener_ffmpeg():
     return None
 
 FFMPEG_PATH = obtener_ffmpeg()
+
+if FFMPEG_PATH:
+    # yt-dlp, al usar recortes (download_ranges), tambien verifica si
+    # ffmpeg/ffprobe estan disponibles buscandolos en el PATH del sistema,
+    # sin depender solo de la opcion "ffmpeg_location". Agregamos su
+    # carpeta al PATH para que esa verificacion los encuentre siempre.
+    _ffmpeg_dir = os.path.dirname(FFMPEG_PATH)
+    if _ffmpeg_dir not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
 
 class VentanaProgreso(tk.Toplevel):
@@ -282,6 +308,11 @@ class App(tk.Tk):
             tk.Label(fr,
                 text="FFmpeg no encontrado - el recorte puede no funcionar",
                 font=("Segoe UI",9), bg="#3d0a0a", fg="#ff9090").pack(fill="x", padx=16, pady=(12,8))
+            if ERROR_FFMPEG:
+                tk.Label(fr,
+                    text=f"Detalle: {ERROR_FFMPEG}",
+                    font=("Consolas",8), bg=C, fg="#ff9090",
+                    wraplength=580, justify="left").pack(fill="x", padx=16, pady=(0,8))
 
         fila = tk.Frame(fr, bg=C)
         fila.pack(anchor="w", padx=16, pady=(4,0))

@@ -1,3 +1,0 @@
-pip install pyinstaller
-
-pyinstaller --onefile --windowed --name "YTDownloader" ytdownloader.py
