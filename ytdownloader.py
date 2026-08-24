@@ -175,13 +175,23 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("YT Downloader")
-        self.geometry("700x580")
+        self.geometry("700x620")
+        self.minsize(700, 620)
         self.resizable(False, False)
         self.configure(bg="#1a1a2e")
         self.carpeta = os.path.join(os.path.expanduser("~"), "Desktop")
         self.info_video = {}
         self.vprog = None
         self._construir_ui()
+        self._centrar_ventana()
+
+    def _centrar_ventana(self):
+        self.update_idletasks()
+        ancho = self.winfo_width()
+        alto = self.winfo_height()
+        x = (self.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (self.winfo_screenheight() // 2) - (alto // 2)
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
 
     def _construir_ui(self):
         BG="#1a1a2e"; CARD="#16213e"; ACC="#e94560"; FG="#eaeaea"; GR="#a0a0b0"
@@ -233,7 +243,7 @@ class App(tk.Tk):
         style.map("TNotebook.Tab",
                   background=[("selected", CARD)], foreground=[("selected", FG)])
         self.nb = ttk.Notebook(self)
-        self.nb.pack(fill="both", expand=True, padx=20)
+        self.nb.pack(fill="x", padx=20)
 
         self.tab_video   = tk.Frame(self.nb, bg=CARD)
         self.tab_audio   = tk.Frame(self.nb, bg=CARD)
@@ -246,16 +256,19 @@ class App(tk.Tk):
         self._tab_audio()
         self._tab_recorte()
 
-        bot = tk.Frame(self, bg=BG, pady=10)
+        separador = tk.Frame(self, bg="#333355", height=1)
+        separador.pack(fill="x", padx=20, pady=(10,0))
+
+        bot = tk.Frame(self, bg=BG, pady=16)
         bot.pack(fill="x", padx=20)
         row2 = tk.Frame(bot, bg=BG)
         row2.pack(fill="x")
-        tk.Label(row2, text="Guardar en:", font=("Segoe UI",9), bg=BG, fg=GR).pack(side="left")
+        tk.Label(row2, text="Guardar en:", font=("Segoe UI",9,"bold"), bg=BG, fg=GR).pack(side="left")
         self.lbl_carpeta = tk.Label(row2, text=self.carpeta,
                                     font=("Segoe UI",9), bg=BG, fg=ACC, cursor="hand2")
-        self.lbl_carpeta.pack(side="left", padx=6)
+        self.lbl_carpeta.pack(side="left", padx=10)
         self.lbl_carpeta.bind("<Button-1>", lambda e: self._elegir_carpeta())
-        self._btn(row2, "Cambiar", self._elegir_carpeta, "#0f3460").pack(side="left")
+        self._btn(row2, "Cambiar carpeta", self._elegir_carpeta, "#0f3460").pack(side="left", ipady=6, ipadx=12)
 
         self.lbl_estado = tk.Label(bot, text="Esperando...",
                                    font=("Segoe UI",9), bg=BG, fg=GR)
@@ -279,22 +292,27 @@ class App(tk.Tk):
         C=self.CARD; F=self.FG; G=self.GR; A=self.ACC
         fr = self.tab_audio
         tk.Label(fr, text="Formato:", font=("Segoe UI",10), bg=C, fg=G
-                 ).pack(anchor="w", padx=16, pady=(14,4))
+                 ).pack(anchor="w", padx=16, pady=(18,6))
+        fila_fmt = tk.Frame(fr, bg=C)
+        fila_fmt.pack(anchor="w", padx=28)
         self.fmt_var = tk.StringVar(value="mp3")
         for fmt in ["mp3","aac","flac","wav","ogg"]:
-            tk.Radiobutton(fr, text=fmt.upper(), variable=self.fmt_var, value=fmt,
+            tk.Radiobutton(fila_fmt, text=fmt.upper(), variable=self.fmt_var, value=fmt,
                            font=("Segoe UI",10), bg=C, fg=F, selectcolor=A,
-                           activebackground=C, activeforeground=F).pack(anchor="w", padx=28)
-        row = tk.Frame(fr, bg=C)
-        row.pack(anchor="w", padx=16, pady=(14,4))
-        tk.Label(row, text="Calidad (kbps):", font=("Segoe UI",10), bg=C, fg=G).pack(side="left")
+                           activebackground=C, activeforeground=F).pack(side="left", padx=(0,18))
+
+        tk.Label(fr, text="Calidad (kbps):", font=("Segoe UI",10), bg=C, fg=G
+                 ).pack(anchor="w", padx=16, pady=(24,6))
+        fila_kbps = tk.Frame(fr, bg=C)
+        fila_kbps.pack(anchor="w", padx=28)
         self.bitrate_var = tk.StringVar(value="192")
         for k in ["128","192","256","320"]:
-            tk.Radiobutton(row, text=k, variable=self.bitrate_var, value=k,
+            tk.Radiobutton(fila_kbps, text=k, variable=self.bitrate_var, value=k,
                            font=("Segoe UI",10), bg=C, fg=F, selectcolor=A,
-                           activebackground=C, activeforeground=F).pack(side="left", padx=6)
+                           activebackground=C, activeforeground=F).pack(side="left", padx=(0,18))
+
         self._btn(fr, "Extraer y Descargar Audio",
-                  lambda: self._descargar("audio"), "#1a6b8a").pack(pady=18, ipadx=16, ipady=6)
+                  lambda: self._descargar("audio"), "#1a6b8a").pack(pady=(40,18), ipadx=16, ipady=6)
 
     def _tab_recorte(self):
         C=self.CARD; F=self.FG; G=self.GR; A=self.ACC
