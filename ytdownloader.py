@@ -11,8 +11,28 @@ def instalar_si_falta(paquete, nombre_pip=None):
     try:
         __import__(paquete)
     except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install",
-                               nombre_pip or paquete, "--quiet"])
+        if getattr(sys, "frozen", False):
+            # Empaquetado como .exe: no se puede hacer pip install en runtime
+            # (sys.executable es el propio .exe, no python.exe). Si el modulo
+            # falta aca, es un problema de empaquetado (falta bundlear la
+            # dependencia), no algo arreglable en tiempo de ejecucion.
+            import tkinter as _tk
+            from tkinter import messagebox as _mb
+            _root = _tk.Tk()
+            _root.withdraw()
+            _mb.showerror(
+                "Falta un componente",
+                f"Falta el modulo '{paquete}' dentro del ejecutable.\n\n"
+                "Este .exe fue compilado sin incluir esta dependencia.\n"
+                "Volve a generar el .exe asegurandote de tener "
+                f"'{nombre_pip or paquete}' instalado con pip en el "
+                "mismo entorno de Python donde corres PyInstaller."
+            )
+            _root.destroy()
+            sys.exit(1)
+        else:
+            subprocess.check_call([sys.executable, "-m", "pip", "install",
+                                   nombre_pip or paquete, "--quiet"])
 
 instalar_si_falta("yt_dlp")
 instalar_si_falta("imageio_ffmpeg", "imageio-ffmpeg")
