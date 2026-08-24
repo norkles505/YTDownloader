@@ -1,0 +1,10 @@
+# Cache de Python
+**/__pycache__/
+*.pyc
+
+# Archivos o carpetas de salida / entorno (opcional)
+*.exe
+build/
+dist/
+venv/
+.venv/

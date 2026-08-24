@@ -25,8 +25,8 @@ pip install static-ffmpeg --quiet
 echo.
 
 echo [3/5] Verificando que el archivo principal existe...
-if not exist "ytdownloader.py" (
-    echo ERROR: No se encuentra ytdownloader.py
+if not exist "manage.py" (
+    echo ERROR: No se encuentra manage.py
     echo Asegurate de estar en la carpeta del proyecto.
     pause
     exit /b 1
@@ -49,7 +49,7 @@ pyinstaller --onefile ^
             --hidden-import static_ffmpeg.run ^
             --clean ^
             --noconfirm ^
-            ytdownloader.py
+            manage.py
 
 if errorlevel 1 (
     echo.
