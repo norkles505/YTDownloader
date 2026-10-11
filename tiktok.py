@@ -6,7 +6,7 @@ import os
 import urllib.request
 import urllib.parse
 
-import yt_dlp
+
 
 
 def es_tiktok(url):
@@ -30,6 +30,7 @@ def buscar_info(url):
 
 
 def descargar(url, carpeta, ffmpeg_path=None, progress_hooks=None):
+    import yt_dlp
     outtmpl = os.path.join(carpeta, "%(title).100s.%(ext)s")
     opts = {
         "outtmpl": outtmpl,

@@ -9,8 +9,6 @@ import os
 import re
 import time
 
-import yt_dlp
-
 import youtube
 import tiktok
 
@@ -116,6 +114,36 @@ class App(tk.Tk):
         self.vprog = None
         self._construir_ui()
         self._centrar_ventana()
+        # FFmpeg se resuelve en segundo plano (puede tardar en buscar/bajar
+        # los binarios): asi la ventana aparece de inmediato y no se congela
+        # el arranque esperando a static_ffmpeg.
+        threading.Thread(target=self._inicializar_ffmpeg_hilo, daemon=True).start()
+
+    def _inicializar_ffmpeg_hilo(self):
+        youtube.inicializar_ffmpeg()
+        self.after(0, self._actualizar_estado_ffmpeg)
+
+    def _actualizar_estado_ffmpeg(self):
+        ok = youtube.FFMPEG_PATH is not None
+        try:
+            self.lbl_ffmpeg_header.config(
+                text="FFmpeg incluido" if ok else "FFmpeg NO encontrado",
+                fg="#90ee90" if ok else "#ff8080")
+            if ok:
+                self.lbl_ffmpeg_recorte.config(
+                    text="FFmpeg incluido automaticamente - listo para recortar",
+                    bg="#0a3d0a", fg="#90ee90")
+                self.lbl_ffmpeg_detalle.pack_forget()
+            else:
+                self.lbl_ffmpeg_recorte.config(
+                    text="FFmpeg no encontrado - el recorte puede no funcionar",
+                    bg="#3d0a0a", fg="#ff9090")
+                if youtube.ERROR_FFMPEG:
+                    self.lbl_ffmpeg_detalle.config(
+                        text=f"Detalle: {youtube.ERROR_FFMPEG}")
+                    self.lbl_ffmpeg_detalle.pack(fill="x", padx=16, pady=(0, 8))
+        except tk.TclError:
+            pass
 
     def _centrar_ventana(self):
         self.update_idletasks()
@@ -136,11 +164,11 @@ class App(tk.Tk):
         tk.Label(header, text="Videos - Audio - Recortes - TikTok",
                  font=("Segoe UI",9), bg=ACC, fg="#ffd0d0").pack(side="left", padx=4, pady=18)
 
-        ffmpeg_ok = youtube.FFMPEG_PATH is not None
-        ffmpeg_txt = "FFmpeg incluido" if ffmpeg_ok else "FFmpeg NO encontrado"
-        ffmpeg_color = "#90ee90" if ffmpeg_ok else "#ff8080"
-        tk.Label(header, text=ffmpeg_txt,
-                 font=("Segoe UI",8,"bold"), bg=ACC, fg=ffmpeg_color).pack(side="right", padx=14)
+        # Estado real de FFmpeg se resuelve en segundo plano (ver
+        # _inicializar_ffmpeg_hilo); arranca con un texto neutro.
+        self.lbl_ffmpeg_header = tk.Label(header, text="Verificando FFmpeg...",
+                 font=("Segoe UI",8,"bold"), bg=ACC, fg="#ffe0b0")
+        self.lbl_ffmpeg_header.pack(side="right", padx=14)
 
         url_frame = tk.Frame(self, bg=BG, pady=14)
         url_frame.pack(fill="x", padx=20)
@@ -253,19 +281,18 @@ class App(tk.Tk):
         C=self.CARD; F=self.FG; G=self.GR; A=self.ACC
         fr = self.tab_recorte
 
-        if youtube.FFMPEG_PATH:
-            tk.Label(fr,
-                text="FFmpeg incluido automaticamente - listo para recortar",
-                font=("Segoe UI",9), bg="#0a3d0a", fg="#90ee90").pack(fill="x", padx=16, pady=(12,8))
-        else:
-            tk.Label(fr,
-                text="FFmpeg no encontrado - el recorte puede no funcionar",
-                font=("Segoe UI",9), bg="#3d0a0a", fg="#ff9090").pack(fill="x", padx=16, pady=(12,8))
-            if youtube.ERROR_FFMPEG:
-                tk.Label(fr,
-                    text=f"Detalle: {youtube.ERROR_FFMPEG}",
-                    font=("Consolas",8), bg=C, fg="#ff9090",
-                    wraplength=580, justify="left").pack(fill="x", padx=16, pady=(0,8))
+        # Estado real de FFmpeg se resuelve en segundo plano (ver
+        # _inicializar_ffmpeg_hilo); arranca con un texto neutro y se
+        # actualiza solo cuando termina de verificar.
+        self.lbl_ffmpeg_recorte = tk.Label(fr,
+            text="Verificando FFmpeg...",
+            font=("Segoe UI",9), bg="#333355", fg=G)
+        self.lbl_ffmpeg_recorte.pack(fill="x", padx=16, pady=(12,8))
+
+        self.lbl_ffmpeg_detalle = tk.Label(fr, text="",
+            font=("Consolas",8), bg=C, fg="#ff9090",
+            wraplength=580, justify="left")
+        # No se empaqueta todavia: solo se muestra si hay error de ffmpeg.
 
         fila = tk.Frame(fr, bg=C)
         fila.pack(anchor="w", padx=16, pady=(4,0))
@@ -443,6 +470,7 @@ class App(tk.Tk):
         return progreso
 
     def _descargar_hilo(self, url, modo):
+        import yt_dlp
         try:
             os.makedirs(self.carpeta, exist_ok=True)
             progreso_hook = self._hacer_progreso_hook()

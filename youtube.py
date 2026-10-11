@@ -3,14 +3,19 @@ Logica de YouTube: vista previa, FFmpeg y descarga (video/audio/recorte).
 """
 import os
 
-import yt_dlp
-from static_ffmpeg import run as _ffmpeg_run
-
 ERROR_FFMPEG = None  # guarda el motivo real si falla la obtencion de ffmpeg
+
+# FFMPEG_PATH arranca en None: se resuelve en segundo plano despues de
+# mostrar la ventana (ver inicializar_ffmpeg), para no bloquear el arranque
+# del exe con la busqueda/descarga de ffmpeg.
+FFMPEG_PATH = None
 
 
 def obtener_ffmpeg():
     global ERROR_FFMPEG
+    # Import diferido: static_ffmpeg no hace falta hasta que se resuelve
+    # ffmpeg, asi no suma tiempo al arranque del exe.
+    from static_ffmpeg import run as _ffmpeg_run
     # static_ffmpeg trae ffmpeg Y ffprobe juntos en la misma carpeta.
     # yt-dlp necesita AMBOS binarios para poder recortar (download_ranges);
     # con solo ffmpeg (como traia imageio_ffmpeg) el recorte falla con
@@ -29,19 +34,24 @@ def obtener_ffmpeg():
     return None
 
 
-FFMPEG_PATH = obtener_ffmpeg()
-
-if FFMPEG_PATH:
-    # yt-dlp, al usar recortes (download_ranges), tambien verifica si
-    # ffmpeg/ffprobe estan disponibles buscandolos en el PATH del sistema,
-    # sin depender solo de la opcion "ffmpeg_location". Agregamos su
-    # carpeta al PATH para que esa verificacion los encuentre siempre.
-    _ffmpeg_dir = os.path.dirname(FFMPEG_PATH)
-    if _ffmpeg_dir not in os.environ.get("PATH", "").split(os.pathsep):
-        os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+def inicializar_ffmpeg():
+    """Busca ffmpeg/ffprobe y deja el resultado en FFMPEG_PATH.
+    Pensado para llamarse desde un hilo (ver visual.py), no bloquea la UI."""
+    global FFMPEG_PATH
+    FFMPEG_PATH = obtener_ffmpeg()
+    if FFMPEG_PATH:
+        # yt-dlp, al usar recortes (download_ranges), tambien verifica si
+        # ffmpeg/ffprobe estan disponibles buscandolos en el PATH del sistema,
+        # sin depender solo de la opcion "ffmpeg_location". Agregamos su
+        # carpeta al PATH para que esa verificacion los encuentre siempre.
+        _ffmpeg_dir = os.path.dirname(FFMPEG_PATH)
+        if _ffmpeg_dir not in os.environ.get("PATH", "").split(os.pathsep):
+            os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+    return FFMPEG_PATH
 
 
 def buscar_info(url):
+    import yt_dlp
     opts = {"quiet": True, "no_warnings": True, "skip_download": True}
     if FFMPEG_PATH:
         opts["ffmpeg_location"] = FFMPEG_PATH
@@ -69,6 +79,7 @@ def descargar(url, modo, carpeta, progress_hooks=None,
     """
     modo: "video" | "audio" | "recorte"
     """
+    import yt_dlp
     outtmpl_normal = os.path.join(carpeta, "%(title).100s.%(ext)s")
     outtmpl_recorte = os.path.join(carpeta, "%(title).100s_recorte.%(ext)s")
 
