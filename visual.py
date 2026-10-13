@@ -101,9 +101,27 @@ class VentanaProgreso(tk.Toplevel):
                 pass
 
 
+def _ruta_icono():
+    """Ruta de icon/logo.png, tanto en desarrollo como dentro del ejecutable
+    de PyInstaller (donde los datos viven en sys._MEIPASS)."""
+    import sys
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, "icon", "logo.png")
+
+
 class App(tk.Tk):
     def __init__(self):
-        super().__init__()
+        # className define el WM_CLASS de la ventana. El archivo .desktop usa
+        # el mismo valor en StartupWMClass para que Linux asocie la ventana
+        # con su icono en la barra de tareas.
+        super().__init__(className="YTDownloader")
+        try:
+            ruta = _ruta_icono()
+            if os.path.exists(ruta):
+                self._icono = tk.PhotoImage(file=ruta)  # referencia: evita que el GC la borre
+                self.iconphoto(True, self._icono)
+        except tk.TclError:
+            pass
         self.title("YT Downloader")
         self.geometry("700x620")
         self.minsize(700, 620)

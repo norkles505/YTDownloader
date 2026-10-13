@@ -2,9 +2,32 @@
 **/__pycache__/
 *.pyc
 
-# Archivos o carpetas de salida / entorno (opcional)
+# Entornos virtuales
+venv/
+.venv/
+
+# Compilación (Windows y Linux)
 *.exe
 build/
 dist/
-venv/
-.venv/
+build-linux/
+dist-linux/
+
+# Logs y archivos de depuración
+*.log
+compilar-log.txt
+yt-dlp-*.txt
+curl-cffi-install.txt
+
+# Editor
+.vscode/
+.idea/
+
+# Secretos
+.env
+
+# Videos descargados (por si pruebas con la carpeta del proyecto)
+*.mp4
+*.mp3
+*.webm
+*.m4a
