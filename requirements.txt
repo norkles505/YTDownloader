@@ -1,0 +1,5 @@
+yt-dlp
+static-ffmpeg
+curl_cffi>=0.13
+pyinstaller
+pillow

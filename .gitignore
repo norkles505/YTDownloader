@@ -12,6 +12,7 @@ build/
 dist/
 build-linux/
 dist-linux/
+*.spec
 
 # Logs y archivos de depuración
 *.log

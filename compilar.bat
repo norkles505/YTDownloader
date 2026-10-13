@@ -73,6 +73,7 @@ pyinstaller --onedir ^
             --hidden-import curl_cffi ^
             --hidden-import curl_cffi.requests ^
             --collect-all curl_cffi ^
+            --add-data "icon\logo.png;icon" ^
             --clean ^
             --noconfirm ^
             manage.py
